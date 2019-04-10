@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="jlm",
-    version="0.1.1",
+    version="0.1.2-DEV",
     packages=find_packages("src"),
     package_dir={"": "src"},
     author="Takafumi Arakaki",
@@ -20,7 +20,5 @@ setup(
     install_requires=[
         # "SOME_PACKAGE",
     ],
-    # entry_points={
-    #     "console_scripts": ["PROGRAM_NAME = jlm.cli:main"],
-    # },
+    entry_points={"console_scripts": ["jlm = jlm.cli:main"]},
 )

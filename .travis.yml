@@ -13,9 +13,10 @@ addons:
       - python3-pip
 matrix:
   include:
-    - language: python
+    - &tox
+      language: python
       env:
-        - TOXENV=black
+        - TOXENV=style
       os: linux
       python: "3.6"
       before_script:
@@ -24,6 +25,15 @@ matrix:
       script:
         - cd jlm && tox
       after_success: []
+    - <<: *tox
+      env:
+        - TOXENV=type
+    - <<: *tox
+      before_install:
+        - curl https://raw.githubusercontent.com/JuliaCI/install-julia/master/install-julia.sh | bash -s - 1.1
+      env:
+        - TOXENV=py
+      python: "3.5"
   allow_failures:
     - julia: nightly
   fast_finish: true

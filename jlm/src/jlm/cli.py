@@ -7,10 +7,14 @@ import subprocess
 import sys
 import textwrap
 from pathlib import Path
+from typing import TYPE_CHECKING
 
+from . import __version__
 from .application import Application
 from .utils import ApplicationError
-from . import __version__
+
+if TYPE_CHECKING:
+    from typing_extensions import Final
 
 doc_run = """
 Run `julia` executable with appropriate system image.
@@ -75,7 +79,7 @@ def make_parser(doc=__doc__):
         version="%(prog)s {} from {} ({} {})".format(
             __version__, Path(__file__).absolute().parent, sys.executable, pyversion
         ),
-    )
+    )  # type: Final
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--verbose", "-v", action="store_true")
     parser.add_argument("--pdb", action="store_true")
@@ -91,9 +95,9 @@ def make_parser(doc=__doc__):
         """,
     )
 
-    subparsers = parser.add_subparsers()
+    subparsers = parser.add_subparsers()  # type: Final
 
-    def subp(command, func, doc=None):
+    def subp(command, func, doc=None, subparsers=subparsers):
         title, body = splitdoc(doc or func.__doc__)
         p = subparsers.add_parser(
             command,
@@ -164,15 +168,74 @@ def make_parser(doc=__doc__):
         "locate",
         formatter_class=FormatterClass,
         help="Show paths to related files and directories",
-    )
-    subparsers = locate_parser.add_subparsers()
+    )  # type: Final
+    locate_subparsers = locate_parser.add_subparsers()  # type: Final
 
-    p = subp("sysimage", Application.cli_locate_sysimage)
+    def locate_subp(*args, **kwargs):
+        return subp(*args, subparsers=locate_subparsers, *kwargs)
+
+    p = locate_subp("sysimage", Application.cli_locate_sysimage)
     p.add_argument("julia", nargs="?", help=doc_julia)
 
-    p = subp("base", Application.cli_locate_base)
-    p = subp("dir", Application.cli_locate_local_dir)
-    p = subp("home-dir", Application.cli_locate_home_dir)
+    p = locate_subp("base", Application.cli_locate_base)
+    p = locate_subp("dir", Application.cli_locate_local_dir)
+    p = locate_subp("home-dir", Application.cli_locate_home_dir)
+
+    p = subp("ijulia-kernel", Application.cli_ijulia_kernel)
+    p.add_argument("--julia", nargs="?", help=doc_julia)
+    p.add_argument("--julia-option", action="append")
+    p.add_argument("connection_file")
+
+    p = subp("install-ijulia-kernel", Application.cli_install_ijulia_kernel)
+    g = p.add_mutually_exclusive_group(required=True)
+    g.add_argument(
+        "--name",
+        help="""
+        Name of the kernel spec.  Typically, kernel spec is going to be
+        written into `~/.local/share/jupyter/kernels/NAME/kernel.json`.
+        """,
+    )
+    g.add_argument(
+        "--output-dir",
+        metavar="PATH",
+        help="""
+        Directory in which `kernel.json` is written.
+        """,
+    )
+    p.add_argument(
+        "--display-name",
+        help="""
+        Name of the kernel to be shown in Jupyter Lab, Notebook, etc.
+        Default to NAME.
+        """,
+    )
+    p.add_argument(
+        "--dont-store-jlm-dir",
+        dest="store_jlm_dir",
+        action="store_false",
+        default=True,
+        help="""
+        Do not --jlm-dir if specified.  This means that `.jlm` directory
+        is searched during run-time.
+        """,
+    )
+    p.add_argument(
+        "--julia-option",
+        action="append",
+        help="""
+        Option to be passed to Julia at run-time.  It can be specified
+        multiple times.
+        """,
+    )
+    p.add_argument(
+        "--jupyter",
+        default="jupyter",
+        help="""
+        Jupyter command line program.  This is used to locate the
+        directory in which kernel should be stored.  This is ignored
+        if `--output-dir"` is given.
+        """,
+    )
 
     return parser
 
